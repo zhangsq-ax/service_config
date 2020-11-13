@@ -1,4 +1,4 @@
-module service_config
+module github.com/zhangsq-ax/service_config
 
 go 1.15
 

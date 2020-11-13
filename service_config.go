@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	//"service_config/nacos_config"
 	"github.com/zhangsq-ax/nacos_config"
 	"gopkg.in/yaml.v3"
 	"strconv"
