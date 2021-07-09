@@ -4,17 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
+	"github.com/zhangsq-ax/nacos-helper-go/options"
 	"github.com/zhangsq-ax/nacos_config"
 	"gopkg.in/yaml.v3"
-	"strconv"
+	"io/ioutil"
+	"os"
 )
 
 type ConfigSource int8
 
 const (
-	ConfigSource_FILE ConfigSource = 0
+	ConfigSource_FILE  ConfigSource = 0
 	ConfigSource_NACOS ConfigSource = 1
 )
 
@@ -25,74 +25,73 @@ const (
 	ConfigFormat_YAML ConfigFormat = 1
 )
 
+type NacosEnvKey struct {
+	ConfigFile       string
+	NacosHost        string
+	NacosPort        string
+	NacosScheme      string
+	NacosContextPath string
+	NacosUsername    string
+	NacosPassword    string
+	NacosNamespaceId string
+	NacosDataId      string
+	NacosGroup       string
+}
+
 type ConfigProviderOptions struct {
-	ConfigFormat ConfigFormat
+	ConfigFormat    ConfigFormat
 	ConfigGenerator func() interface{}
-	EnvKey struct {
-		ConfigFile string
-		NacosHost string
-		NacosPort string
-		NacosNamespaceId string
-		NacosDataId string
-		NacosGroup string
-	}
+	EnvKey          *NacosEnvKey
 }
 
 type ConfigProvider struct {
 	source ConfigSource
-	conf interface{}
-	nacos *nacos_config.NacosConfig
-	opts ConfigProviderOptions
+	conf   interface{}
+	nacos  *nacos_config.NacosConfig
+	opts   ConfigProviderOptions
 }
 
 var cProvider *ConfigProvider
 
-func NewConfigProviderOptions(configFormat ConfigFormat, generator func () interface{}) *ConfigProviderOptions {
+func NewConfigProviderOptions(configFormat ConfigFormat, generator func() interface{}) *ConfigProviderOptions {
 	return &ConfigProviderOptions{
-		ConfigFormat: configFormat,
+		ConfigFormat:    configFormat,
 		ConfigGenerator: generator,
-		EnvKey: struct {
-			ConfigFile       string
-			NacosHost        string
-			NacosPort        string
-			NacosNamespaceId string
-			NacosDataId      string
-			NacosGroup       string
-		}{
-			ConfigFile: "CONFIG_FILE",
-			NacosHost: "NACOS_HOST",
-			NacosPort: "NACOS_PORT",
+		EnvKey: &NacosEnvKey{
+			ConfigFile:       "CONFIG_FILE",
+			NacosHost:        "NACOS_HOST",
+			NacosPort:        "NACOS_PORT",
+			NacosScheme:      "NACOS_SCHEME",
+			NacosContextPath: "NACOS_CONTEXT_PATH",
+			NacosUsername:    "NACOS_USERNAME",
+			NacosPassword:    "NACOS_PASSWORD",
 			NacosNamespaceId: "NACOS_NAMESPACE_ID",
-			NacosDataId: "NACOS_DATA_ID",
-			NacosGroup: "NACOS_GROUP",
+			NacosDataId:      "NACOS_DATA_ID",
+			NacosGroup:       "NACOS_GROUP",
 		},
 	}
 }
 
+// GetConfigProvider 获取 ConfigProvider
 func GetConfigProvider(opts *ConfigProviderOptions, forceRefresh bool) (*ConfigProvider, error) {
 	if cProvider == nil || forceRefresh {
 		var (
-			source ConfigSource
-			conf interface{}
-			nacos *nacos_config.NacosConfig
+			source    ConfigSource
+			conf      interface{}
+			nacos     *nacos_config.NacosConfig
+			nacosOpts *options.NacosOptions
+			err       error
 		)
 		configFile := os.Getenv(opts.EnvKey.ConfigFile)
 		if configFile == "" {
 			// 使用 Nacos 提供配置
 			source = ConfigSource_NACOS
-			portStr := os.Getenv(opts.EnvKey.NacosPort)
-			port, err := strconv.ParseUint(portStr, 0, 64)
+			nacosOpts, err = options.GetNacosOptionsByEnv()
 			if err != nil {
-				return nil, errors.New(fmt.Sprintf("Invalid NACOS_CONFIG_PORT: %s", portStr))
+				return nil, errors.New(fmt.Sprintf("Failed to get Nacos options: %v", err))
 			}
 
-			nacos, err = nacos_config.NewNacosConfig(nacos_config.NacosOptions{
-				Host: os.Getenv(opts.EnvKey.NacosHost),
-				Port: port,
-				NamespaceId: os.Getenv(opts.EnvKey.NacosNamespaceId),
-				DataId: os.Getenv(opts.EnvKey.NacosDataId),
-				Group: os.Getenv(opts.EnvKey.NacosGroup),
-			})
+			nacos, err = nacos_config.NewNacosConfig(nacosOpts, os.Getenv(opts.EnvKey.NacosDataId), os.Getenv(opts.EnvKey.NacosGroup))
 			if err != nil {
 				return nil, errors.New(fmt.Sprintf("Failed to init NacosConfig: %v", err))
 			}
@@ -114,18 +113,18 @@ func GetConfigProvider(opts *ConfigProviderOptions, forceRefresh bool) (*ConfigP
 
 		cProvider = &ConfigProvider{
 			source: source,
-			conf: conf,
-			nacos: nacos,
-			opts: *opts,
+			conf:   conf,
+			nacos:  nacos,
+			opts:   *opts,
 		}
 	}
 
 	return cProvider, nil
 }
 
+// Config 获取配置内容，JSON 或 YAML 格式
 func (p *ConfigProvider) Config() (interface{}, error) {
 	if p.source == ConfigSource_FILE {
-
 		return p.conf, nil
 	} else {
 		confStr, err := p.nacos.GetConfigString()
