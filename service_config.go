@@ -122,6 +122,19 @@ func GetConfigProvider(opts *ConfigProviderOptions, forceRefresh bool) (*ConfigP
 	return cProvider, nil
 }
 
+// ConfigString 获取配置的文本内容
+func (p *ConfigProvider) ConfigString() (string, error) {
+	if p.source == ConfigSource_NACOS {
+		return p.nacos.GetConfigString()
+	} else {
+		data, err := json.Marshal(p.conf)
+		if err != nil {
+			return "", err
+		}
+		return string(data), nil
+	}
+}
+
 // Config 获取配置内容，JSON 或 YAML 格式
 func (p *ConfigProvider) Config() (interface{}, error) {
 	if p.source == ConfigSource_FILE {
