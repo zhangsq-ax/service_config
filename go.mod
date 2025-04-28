@@ -3,7 +3,8 @@ module github.com/zhangsq-ax/service_config
 go 1.15
 
 require (
-	github.com/zhangsq-ax/nacos-helper-go v1.2.0 // indirect
-	github.com/zhangsq-ax/nacos_config v1.1.0
-	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+	github.com/fsnotify/fsnotify v1.9.0
+	github.com/nacos-group/nacos-sdk-go v1.0.8
+	github.com/zhangsq-ax/nacos-helper-go v1.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
